@@ -1,12 +1,19 @@
+// musical-ear-trainer-frontend/src/router/index.js
 import { createRouter, createWebHistory } from "vue-router";
-import HomeView from "../views/HomeView.vue";
+import GameView from "../views/GameView.vue"; // Import your new GameView
 
 const routes = [
   {
-    path: "/",
+    path: "/", // Set '/' to be your game view
     name: "home",
-    component: HomeView,
+    component: GameView, // Use GameView here
   },
+  {
+    path: "/game", // Also allow /game specifically
+    name: "game",
+    component: GameView,
+  },
+  // You can remove or modify the original 'about' route if you wish
   {
     path: "/about",
     name: "about",
@@ -19,7 +26,7 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
+  history: createWebHistory(process.env.BASE_URL), // Use import.meta.env.BASE_URL for Vite
   routes,
 });
 
