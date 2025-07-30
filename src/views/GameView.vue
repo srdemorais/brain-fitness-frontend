@@ -29,33 +29,28 @@
       <div v-if="currentNote.note" class="note-info-section">
         <p>Listen to the note and identify its properties!</p>
 
-        <div v-if="gameState === 'askingTextPosition'" class="question-group">
-          <label for="next-note">Next Note:</label>
-          <input
-            type="text"
-            id="next-note"
-            v-model="userInputs.nextNoteGuess"
-            placeholder="e.g., Db4"
-          />
-          <span
-            v-if="userInputsChecked && !userInputs.nextNoteCorrect"
-            class="error-text"
-          >
-            Correct: {{ currentNote.nextNote }}
-          </span>
+        <button
+          v-if="currentNote.audioPath && gameState === 'askingTextPosition'"
+          @click="playSound(currentNote.audioPath)"
+          :disabled="isLoading || isPlayingAudio"
+          class="replay-button"
+        >
+          Replay Sound
+        </button>
 
-          <label for="previous-note">Previous Note:</label>
+        <div v-if="gameState === 'askingTextPosition'" class="question-group">
+          <label for="note-name-guess">Note Name:</label>
           <input
             type="text"
-            id="previous-note"
-            v-model="userInputs.previousNoteGuess"
-            placeholder="e.g., B3"
+            id="note-name-guess"
+            v-model="userInputs.noteNameGuess"
+            placeholder="e.g., C4"
           />
           <span
-            v-if="userInputsChecked && !userInputs.previousNoteCorrect"
+            v-if="userInputsChecked && !userInputs.noteNameCorrect"
             class="error-text"
           >
-            Correct: {{ currentNote.previousNote }}
+            Correct: {{ currentNote.note }}
           </span>
 
           <p>Click on the staff to mark the position of the note.</p>
@@ -73,7 +68,10 @@
             Correct: {{ currentNote.position }}
           </span>
 
-          <button @click="checkTextPosition" :disabled="isLoading">
+          <button
+            @click="checkTextPosition"
+            :disabled="isLoading || isPlayingAudio"
+          >
             Check Answers
           </button>
         </div>
@@ -88,15 +86,25 @@
                 playSound(note.audioPath);
                 userInputs.soundGuessPos = index;
               "
-              :class="{ 'selected-sound': userInputs.soundGuessPos === index }"
-              :disabled="isLoading"
+              :class="{
+                'selected-sound': userInputs.soundGuessPos === index,
+                'correct-sound':
+                  showSoundFeedback && index === correctSoundPosition, // NEW: Correct answer
+                'incorrect-sound':
+                  showSoundFeedback &&
+                  userInputs.soundGuessPos === index &&
+                  !userInputs.soundCorrect, // NEW: User's wrong guess
+              }"
+              :disabled="isLoading || isPlayingAudio"
             >
               Play {{ index + 1 }}
             </button>
           </div>
           <button
             @click="checkSoundGuess"
-            :disabled="isLoading || userInputs.soundGuessPos === null"
+            :disabled="
+              isLoading || userInputs.soundGuessPos === null || isPlayingAudio
+            "
           >
             Submit Sound Guess
           </button>
@@ -108,14 +116,16 @@
           </span>
         </div>
 
-        <button @click="startNewRound" :disabled="isLoading">
+        <button @click="startNewRound" :disabled="isLoading || isPlayingAudio">
           Next Round / Start Game
         </button>
       </div>
 
       <div v-else class="start-game-prompt">
         <p>Click "Start Game" to begin your musical ear training!</p>
-        <button @click="startNewRound" :disabled="isLoading">Start Game</button>
+        <button @click="startNewRound" :disabled="isLoading || isPlayingAudio">
+          Start Game
+        </button>
       </div>
     </div>
   </div>
@@ -186,13 +196,10 @@ const currentNote = reactive({
 });
 
 const userInputs = reactive({
-  nextNoteGuess: "",
-  previousNoteGuess: "",
-  positionGuess: null, // Will be set by handleStaffClick
-  soundGuessPos: null, // 0-indexed position of the sound chosen by user
-  // Tracking correctness for UI feedback
-  nextNoteCorrect: false,
-  previousNoteCorrect: false,
+  noteNameGuess: "",
+  positionGuess: null,
+  soundGuessPos: null,
+  noteNameCorrect: false,
   positionCorrect: false,
   soundCorrect: false,
 });
@@ -203,6 +210,9 @@ const feedbackMessage = ref("");
 const isLoading = ref(false); // To disable buttons during API calls
 const gameState = ref("idle"); // 'idle', 'askingTextPosition', 'askingSound'
 const userInputsChecked = ref(false); // To show errors after user checks answers
+const showSoundFeedback = ref(false);
+
+const isPlayingAudio = ref(false); // To track if audio is currently playing
 
 const guessNotesForSound = ref([]); // Array of notes for the sound test
 const correctSoundPosition = ref(null); // The 0-indexed position of the actual note in guessNotesForSound
@@ -215,11 +225,9 @@ const isCorrect = computed(() => {
   if (!userInputsChecked.value) {
     return false;
   }
-
   if (gameState.value === "askingTextPosition") {
     return (
-      userInputs.nextNoteCorrect &&
-      userInputs.previousNoteCorrect &&
+      userInputs.noteNameCorrect && // NEW
       userInputs.positionCorrect
     );
   }
@@ -251,18 +259,17 @@ const correctPositionHintStyle = computed(() => {
 // --- Methods ---
 
 const resetInputsAndFeedback = () => {
-  userInputs.nextNoteGuess = "";
-  userInputs.previousNoteGuess = "";
+  userInputs.noteNameGuess = "";
   userInputs.positionGuess = null;
   userInputs.soundGuessPos = null;
-  userInputs.nextNoteCorrect = false;
-  userInputs.previousNoteCorrect = false;
+  userInputs.noteNameCorrect = false;
   userInputs.positionCorrect = false;
   userInputs.soundCorrect = false;
   feedbackMessage.value = "";
   userInputsChecked.value = false;
   guessNotesForSound.value = [];
   correctSoundPosition.value = null;
+  showSoundFeedback.value = false;
 };
 
 const startNewRound = async () => {
@@ -273,6 +280,8 @@ const startNewRound = async () => {
   try {
     const response = await axios.post(`${API_BASE_URL}/note/new`);
     Object.assign(currentNote, response.data); // Update currentNote reactive object
+    playSound(currentNote.audioPath); // Automatically play the new note's audio
+
     feedbackMessage.value = "New note generated. Identify its properties!";
     gameState.value = "askingTextPosition"; // Move to the first phase
   } catch (error) {
@@ -285,12 +294,11 @@ const startNewRound = async () => {
 
 const checkTextPosition = async () => {
   isLoading.value = true;
-  userInputsChecked.value = true; // Mark that user has submitted answers
+  userInputsChecked.value = true;
   try {
     const payload = {
       noteIdx: currentNote.idx,
-      userNext: userInputs.nextNoteGuess,
-      userPrevious: userInputs.previousNoteGuess,
+      userNoteName: userInputs.noteNameGuess, // NEW
       userPosition: userInputs.positionGuess,
     };
     const response = await axios.post(
@@ -298,28 +306,23 @@ const checkTextPosition = async () => {
       payload
     );
 
-    // Update correctness flags based on backend response
-    userInputs.nextNoteCorrect = response.data.nextCorrect;
-    userInputs.previousNoteCorrect = response.data.previousCorrect;
+    userInputs.noteNameCorrect = response.data.noteNameCorrect; // NEW
     userInputs.positionCorrect = response.data.positionCorrect;
 
-    // Provide feedback message
     if (
-      response.data.nextCorrect &&
-      response.data.previousCorrect &&
+      response.data.noteNameCorrect && // UPDATED CONDITION
       response.data.positionCorrect
     ) {
       feedbackMessage.value =
-        "All text and position answers are CORRECT! Preparing sound test...";
-      score.value++; // Increment score only if all are correct in this phase
-      // Automatically move to sound test phase
+        "Note Name and Position are CORRECT! Preparing sound test..."; // UPDATED MESSAGE
+      score.value++;
       await prepareSoundTest();
     } else {
       feedbackMessage.value =
         "Some answers are incorrect. Review and click 'Next Round' to try again.";
     }
   } catch (error) {
-    console.error("Error checking text/position:", error);
+    console.error("Error checking position:", error); // Updated message
     feedbackMessage.value = "Failed to check answers. Please try again.";
   } finally {
     isLoading.value = false;
@@ -380,13 +383,37 @@ const prepareSoundTest = async () => {
 };
 
 const playSound = (audioPath) => {
-  const audio = new Audio(`http://localhost:8080${audioPath}`); // Full path to backend
-  audio.play().catch((e) => console.error("Error playing sound:", e));
+  if (!audioPath) {
+    console.warn("Attempted to play sound with empty audioPath.");
+    return;
+  }
+
+  isPlayingAudio.value = true; // Set to true when playback begins
+
+  const audio = new Audio(`http://localhost:8080${audioPath}`);
+
+  audio.onended = () => {
+    isPlayingAudio.value = false; // Set to false when playback ends naturally
+  };
+
+  audio.onerror = (e) => {
+    isPlayingAudio.value = false; // Set to false if an error occurs
+    console.error("Audio playback error:", e);
+    feedbackMessage.value = "Error playing sound. Please try again."; // Inform user
+  };
+
+  audio.play().catch((e) => {
+    isPlayingAudio.value = false; // Also set to false if play() itself returns a rejected promise
+    console.error("Error initiating audio playback:", e);
+    feedbackMessage.value =
+      "Error initiating sound. Browser autoplay policy might be blocking.";
+  });
 };
 
 const checkSoundGuess = async () => {
   isLoading.value = true;
   userInputsChecked.value = true; // Mark user inputs as checked
+  showSoundFeedback.value = true;
   try {
     const payload = {
       correctGuessPos: correctSoundPosition.value,
@@ -598,6 +625,18 @@ onMounted(() => {
       border: 2px solid #007bff; /* Highlight selected selected sound */
       box-shadow: 0 0 5px #007bff;
     }
+
+    &.correct-sound {
+      background-color: #28a745 !important; /* Green */
+      border: 2px solid #1e7e34 !important;
+      color: white;
+    }
+
+    &.incorrect-sound {
+      background-color: #dc3545 !important; /* Red */
+      border: 2px solid #bd2130 !important;
+      color: white;
+    }
   }
 }
 
@@ -605,5 +644,21 @@ onMounted(() => {
   color: #dc3545;
   font-size: 0.9em;
   margin-top: 5px;
+}
+
+.replay-button {
+  background-color: #28a745 !important; /* Green color for replay */
+  margin-bottom: 15px; /* Adds some space below the button */
+  // Inherits other button styles from .question-group button
+  &:hover:not(:disabled) {
+    background-color: #218838 !important;
+  }
+}
+
+.audio-status {
+  font-weight: bold;
+  color: #007bff; /* A nice blue color */
+  margin-top: 10px;
+  margin-bottom: 10px;
 }
 </style>
