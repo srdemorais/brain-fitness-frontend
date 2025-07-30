@@ -142,35 +142,35 @@ const positionPixelMap = {
   // Estimated for a staff image around 600px wide, and notes spread vertically
   // from roughly y=380 (position 1) to y=40 (position 29).
   // Use this as a starting point, but MEASURE your own image!
-  1: { x: 300, y: 380 }, // C2 (lowest on staff, highest Y)
-  2: { x: 300, y: 367 }, // Db2
-  3: { x: 300, y: 354 }, // D2
-  4: { x: 300, y: 341 }, // Eb2
-  5: { x: 300, y: 328 }, // E2
-  6: { x: 300, y: 315 }, // F2
-  7: { x: 300, y: 302 }, // Gb2
-  8: { x: 300, y: 289 }, // G2
-  9: { x: 300, y: 276 }, // Ab2
-  10: { x: 300, y: 263 }, // A2
-  11: { x: 300, y: 250 }, // Bb2
-  12: { x: 300, y: 237 }, // B2
-  13: { x: 300, y: 224 }, // C3
-  14: { x: 300, y: 211 }, // Db3
-  15: { x: 300, y: 198 }, // D3
-  16: { x: 300, y: 185 }, // Eb3
-  17: { x: 300, y: 172 }, // E3
-  18: { x: 300, y: 159 }, // F3
-  19: { x: 300, y: 146 }, // Gb3
-  20: { x: 300, y: 133 }, // G3
-  21: { x: 300, y: 120 }, // Ab3
-  22: { x: 300, y: 107 }, // A3
-  23: { x: 300, y: 94 }, // Bb3
-  24: { x: 300, y: 81 }, // B3
-  25: { x: 300, y: 68 }, // C4
-  26: { x: 300, y: 55 }, // Db4
-  27: { x: 300, y: 42 }, // D4
-  28: { x: 300, y: 29 }, // Eb4
-  29: { x: 300, y: 16 }, // C6 (highest on staff, lowest Y)
+  1: { x: 288, y: 435 }, // C2 (lowest on staff, highest Y)
+  2: { x: 288, y: 420 },
+  3: { x: 288, y: 404 },
+  4: { x: 288, y: 389 },
+  5: { x: 288, y: 376 },
+  6: { x: 288, y: 359 },
+  7: { x: 288, y: 346 },
+  8: { x: 288, y: 329 },
+  9: { x: 288, y: 316 },
+  10: { x: 288, y: 300 },
+  11: { x: 288, y: 287 },
+  12: { x: 288, y: 271 },
+  13: { x: 288, y: 257 },
+  14: { x: 288, y: 241 },
+  15: { x: 288, y: 228 },
+  16: { x: 288, y: 210 },
+  17: { x: 288, y: 199 },
+  18: { x: 288, y: 183 },
+  19: { x: 288, y: 170 },
+  20: { x: 288, y: 155 },
+  21: { x: 288, y: 142 },
+  22: { x: 288, y: 125 },
+  23: { x: 288, y: 112 },
+  24: { x: 288, y: 97 },
+  25: { x: 288, y: 84 },
+  26: { x: 288, y: 67 },
+  27: { x: 288, y: 54 },
+  28: { x: 288, y: 38 },
+  29: { x: 288, y: 25 }, // C6 (highest on staff, lowest Y)
 };
 
 // --- Reactive State ---
@@ -424,7 +424,7 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .game-container {
-  max-width: 800px;
+  max-width: 1200px; /* Increase max-width to allow more horizontal space */
   margin: 20px auto;
   padding: 20px;
   background-color: #f9f9f9;
@@ -489,16 +489,20 @@ onMounted(() => {
 }
 
 .game-board {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
+  display: flex; /* Use flexbox */
+  flex-direction: row; /* Arrange items in a row */
+  flex-wrap: wrap; /* Allow items to wrap to the next line on smaller screens */
+  justify-content: center; /* Center items horizontally */
+  align-items: flex-start; /* Align items to the top of the container */
+  gap: 30px; /* Space between the two columns */
 }
 
 .staff-wrapper {
-  position: relative; /* Essential for positioning the hint */
-  width: 100%;
-  max-width: 600px; /* Adjust based on your image size */
+  position: relative;
+  /* Allow it to grow, shrink, and take up roughly 50% of the available space */
+  flex: 1 1 500px; /* flex-grow flex-shrink flex-basis (min-width before shrinking) */
+  max-width: 600px; /* Maximum size for the image */
+  min-width: 300px; /* Ensure it doesn't get too small before wrapping */
   height: auto;
 }
 
@@ -527,8 +531,10 @@ onMounted(() => {
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
-  width: 100%;
-  max-width: 400px;
+  /* Allow it to grow, shrink, and take up roughly 400px base space */
+  flex: 1 1 400px;
+  max-width: 450px; /* Adjust max-width if needed for inputs */
+  min-width: 300px; /* Ensure it doesn't get too small */
   text-align: left;
 }
 
