@@ -5,7 +5,6 @@
 </template>
 
 <style lang="scss">
-// You can keep or remove default styles. For now, we'll keep it minimal.
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
